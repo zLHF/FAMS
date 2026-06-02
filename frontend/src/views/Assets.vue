@@ -95,8 +95,13 @@ async function viewDetail(row) {
 }
 
 async function handleSave() {
-  if (editing.value?.id) { await updateAsset(editing.value.id, form.value) } else { await createAsset(form.value) }
-  ElMessage.success('保存成功'); dialogVisible.value=false; loadData()
+  if (!form.value.code || !form.value.name) { ElMessage.warning('资产编码和名称为必填'); return }
+  try {
+    if (editing.value?.id) { await updateAsset(editing.value.id, form.value) } else { await createAsset(form.value) }
+    ElMessage.success('保存成功'); dialogVisible.value=false; loadData()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.error || '保存失败')
+  }
 }
 
 onMounted(() => { loadData(); loadOptions() })
