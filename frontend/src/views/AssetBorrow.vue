@@ -12,7 +12,7 @@
       <template v-else>
         <el-table :data="tableData" stripe>
           <el-table-column prop="code" label="资产编码" /><el-table-column prop="name" label="资产名称" />
-          <el-table-column label="当前状态" width="100"><template #default="{row}"><el-tag :type="statusType(row.status)" size="small">{{statusLabel[row.status]}}</el-tag></template></el-table-column>
+          <el-table-column label="当前状态" width="100"><template #default="{row}"><el-tag :type="statusType[row.status]" size="small">{{statusLabel[row.status]}}</el-tag></template></el-table-column>
           <el-table-column prop="borrower_name" label="借用人" />
           <el-table-column label="操作" width="100">
             <template #default="{row}">
