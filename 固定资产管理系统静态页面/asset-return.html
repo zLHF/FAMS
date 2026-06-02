@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>借用归还 - 固定资产管理系统</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">固</div>
+      <div>
+        <strong>固定资产管理系统</strong>
+        <small>Asset Management</small>
+      </div>
+    </div>
+    <nav class="nav">
+      <a class="" href="dashboard.html"><span></span>工作台</a>
+<a class="" href="users.html"><span></span>用户管理</a>
+<a class="" href="roles.html"><span></span>角色管理</a>
+<a class="" href="permissions.html"><span></span>权限管理</a>
+<a class="" href="asset-params.html"><span></span>资产参数设置</a>
+<a class="" href="assets.html"><span></span>固定资产台账</a>
+<a class="" href="asset-distribute.html"><span></span>固定资产派发</a>
+<a class="" href="asset-borrow.html"><span></span>固定资产借用</a>
+<a class="active" href="asset-return.html"><span></span>借用归还</a>
+<a class="" href="asset-revert.html"><span></span>领用退库</a>
+<a class="" href="asset-owner-change.html"><span></span>变更领用人</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1>借用归还</h1>
+        <p>轻量后台页面，可直接作为前端静态模板交付后端接入。</p>
+      </div>
+      <div class="user-chip">管理员 admin</div>
+    </header>
+    <section class="toolbar">
+  <div class="filters"><label>资产编码<input placeholder="请输入资产编码"></label>
+<label>资产名称<input placeholder="请输入资产名称"></label></div>
+  <div class="actions"><button class="btn" data-demo="查询">查询</button>
+<button class="btn primary" data-modal="return">归还登记</button></div>
+</section><section class="table-wrap">
+  <table>
+    <thead><tr><th>资产编码</th><th>资产名称</th><th>借用人</th><th>借用日期</th><th>预计归还</th><th>操作</th></tr></thead>
+    <tbody><tr><td>ZC-2026-014</td><td>会议室投影仪</td><td>李四</td><td>2026-05-20</td><td>2026-06-05</td><td><button class="link-btn" type="button" data-modal="return">归还</button></td></tr></tbody>
+  </table>
+</section>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2 id="modalTitle">操作</h2>
+        <button class="icon-btn" type="button" data-close>×</button>
+      </div>
+      <form id="modalForm" class="form-grid"></form>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="button" data-save>保存</button>
+      </div>
+    </div>
+  </div>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

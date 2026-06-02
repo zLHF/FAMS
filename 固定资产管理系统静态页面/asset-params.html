@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>资产参数设置 - 固定资产管理系统</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">固</div>
+      <div>
+        <strong>固定资产管理系统</strong>
+        <small>Asset Management</small>
+      </div>
+    </div>
+    <nav class="nav">
+      <a class="" href="dashboard.html"><span></span>工作台</a>
+<a class="" href="users.html"><span></span>用户管理</a>
+<a class="" href="roles.html"><span></span>角色管理</a>
+<a class="" href="permissions.html"><span></span>权限管理</a>
+<a class="active" href="asset-params.html"><span></span>资产参数设置</a>
+<a class="" href="assets.html"><span></span>固定资产台账</a>
+<a class="" href="asset-distribute.html"><span></span>固定资产派发</a>
+<a class="" href="asset-borrow.html"><span></span>固定资产借用</a>
+<a class="" href="asset-return.html"><span></span>借用归还</a>
+<a class="" href="asset-revert.html"><span></span>领用退库</a>
+<a class="" href="asset-owner-change.html"><span></span>变更领用人</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1>资产参数设置</h1>
+        <p>轻量后台页面，可直接作为前端静态模板交付后端接入。</p>
+      </div>
+      <div class="user-chip">管理员 admin</div>
+    </header>
+    <section class="toolbar">
+  <div class="filters"><label>参数类型<input placeholder="资产分类/品牌/单位"></label>
+<label>参数名称<input placeholder="请输入参数名称"></label></div>
+  <div class="actions"><button class="btn" data-demo="查询">查询</button>
+<button class="btn primary" data-modal="param">新增参数</button></div>
+</section><section class="table-wrap">
+  <table>
+    <thead><tr><th>参数类型</th><th>参数名称</th><th>编码</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody><tr><td>资产分类</td><td>电脑设备</td><td>CAT_PC</td><td>1</td><td><span class="tag success">启用</span></td><td><button class="link-btn" type="button" data-demo="修改">修改</button> <button class="link-btn" type="button" data-demo="删除">删除</button></td></tr><tr><td>资产分类</td><td>办公家具</td><td>CAT_FURNITURE</td><td>2</td><td><span class="tag success">启用</span></td><td><button class="link-btn" type="button" data-demo="修改">修改</button> <button class="link-btn" type="button" data-demo="删除">删除</button></td></tr><tr><td>计量单位</td><td>台</td><td>UNIT_TAI</td><td>1</td><td><span class="tag success">启用</span></td><td><button class="link-btn" type="button" data-demo="修改">修改</button> <button class="link-btn" type="button" data-demo="删除">删除</button></td></tr><tr><td>存放地点</td><td>总部库房</td><td>LOC_STORE</td><td>1</td><td><span class="tag success">启用</span></td><td><button class="link-btn" type="button" data-demo="修改">修改</button> <button class="link-btn" type="button" data-demo="删除">删除</button></td></tr></tbody>
+  </table>
+</section>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2 id="modalTitle">操作</h2>
+        <button class="icon-btn" type="button" data-close>×</button>
+      </div>
+      <form id="modalForm" class="form-grid"></form>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="button" data-save>保存</button>
+      </div>
+    </div>
+  </div>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
