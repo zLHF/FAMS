@@ -29,7 +29,7 @@
               <b style="background:#fff3cd;color:#8a5a00;">{{ stats.borrowing }}</b>
               <div><strong>借用中的资产</strong><span>请关注预计归还日期</span></div>
             </li>
-            <li>
+            <li v-if="stats.idle > 0">
               <b style="background:#e3f8ef;color:#13795b;">{{ stats.idle }}</b>
               <div><strong>闲置资产待分配</strong><span>可进行派发或借用</span></div>
             </li>
