@@ -20,7 +20,7 @@
           <el-table-column prop="category" label="分类" width="100" /><el-table-column prop="brand" label="品牌" width="80" />
           <el-table-column prop="location" label="存放地点" />
           <el-table-column label="状态" width="90">
-            <template #default="{row}"><el-tag :type="statusType(row.status)" size="small">{{statusLabel[row.status]}}</el-tag></template>
+            <template #default="{row}"><el-tag :type="statusType[row.status]" size="small">{{statusLabel[row.status]}}</el-tag></template>
           </el-table-column>
           <el-table-column prop="owner_name" label="责任人" width="80" />
           <el-table-column label="操作" width="140">
