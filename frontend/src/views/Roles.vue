@@ -67,14 +67,23 @@ function openDialog(role=null) {
 }
 
 async function handleSave() {
-  const data = {...form.value,status:form.value.statusBool?'active':'disabled'}
-  if (editing.value) { await updateRole(editing.value.id,data) } else { await createRole(data) }
-  ElMessage.success('保存成功'); dialogVisible.value = false; loadData()
+  if (!form.value.name) { ElMessage.warning('角色名称为必填'); return }
+  try {
+    const data = {...form.value,status:form.value.statusBool?'active':'disabled'}
+    if (editing.value) { await updateRole(editing.value.id,data) } else { await createRole(data) }
+    ElMessage.success('保存成功'); dialogVisible.value = false; loadData()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.error || '保存失败')
+  }
 }
 
 async function handleDelete(role) {
-  await ElMessageBox.confirm(`确认删除角色 "${role.name}"？`,'提示',{type:'warning'})
-  await deleteRole(role.id); ElMessage.success('删除成功'); loadData()
+  try {
+    await ElMessageBox.confirm(`确认删除角色 "${role.name}"？`,'提示',{type:'warning'})
+    await deleteRole(role.id); ElMessage.success('删除成功'); loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(e.response?.data?.error || '删除失败')
+  }
 }
 
 async function openPermDialog(role) {
