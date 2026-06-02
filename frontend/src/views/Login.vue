@@ -9,13 +9,13 @@
         <h1 style="color:#fff;font-size:32px;line-height:1.3;margin:40px 0;">企业固定资产<br>数字化管理平台</h1>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:auto;">
           <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:14px;">
-            <b style="color:#fff;font-size:24px;">1286</b><br><span style="color:#bcccdc;font-size:12px;">资产总数</span>
+            <b style="color:#fff;font-size:24px;">{{ publicStats.total || '—' }}</b><br><span style="color:#bcccdc;font-size:12px;">资产总数</span>
           </div>
           <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:14px;">
-            <b style="color:#fff;font-size:24px;">86</b><br><span style="color:#bcccdc;font-size:12px;">闲置资产</span>
+            <b style="color:#fff;font-size:24px;">{{ publicStats.idle || '—' }}</b><br><span style="color:#bcccdc;font-size:12px;">闲置资产</span>
           </div>
           <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:14px;">
-            <b style="color:#fff;font-size:24px;">42</b><br><span style="color:#bcccdc;font-size:12px;">借用中</span>
+            <b style="color:#fff;font-size:24px;">{{ publicStats.borrowing || '—' }}</b><br><span style="color:#bcccdc;font-size:12px;">借用中</span>
           </div>
         </div>
       </div>
@@ -40,15 +40,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getStats } from '../api/dashboard'
 
 const auth = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
 const form = ref({ username: 'admin', password: '123456' })
+const publicStats = ref({})
 
 async function handleLogin() {
   if (!form.value.username || !form.value.password) {
@@ -63,6 +65,15 @@ async function handleLogin() {
     loading.value = false
   }
 }
+
+onMounted(async () => {
+  try {
+    const s = await getStats()
+    publicStats.value = s
+  } catch {
+    // not logged in, show dashes
+  }
+})
 </script>
 
 <style scoped>

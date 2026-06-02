@@ -10,25 +10,28 @@
         <el-button type="primary" class="btn-green" @click="openDialog()">新增用户</el-button>
       </div>
     </el-card>
-    <el-card shadow="never">
-      <el-table :data="tableData" stripe>
-        <el-table-column prop="username" label="账号" /><el-table-column prop="name" label="姓名" />
-        <el-table-column prop="department" label="部门" /><el-table-column prop="role_name" label="角色" />
-        <el-table-column prop="phone" label="手机号" />
-        <el-table-column label="状态" width="80">
-          <template #default="{row}"><el-tag :type="row.status==='active'?'success':'danger'" size="small">{{row.status==='active'?'启用':'停用'}}</el-tag></template>
-        </el-table-column>
-        <el-table-column label="操作" width="220">
-          <template #default="{row}">
-            <el-button link type="primary" @click="openDialog(row)">修改</el-button>
-            <el-button link :type="row.status==='active'?'warning':'success'" @click="toggleStatus(row)">{{row.status==='active'?'停用':'启用'}}</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <el-pagination background layout="total, prev, pager, next" :total="total" :page-size="filters.per_page" v-model:current-page="filters.page" @current-change="loadData" />
-      </div>
+    <el-card shadow="never" v-loading="loading">
+      <el-empty v-if="!loading && tableData.length === 0" description="暂无数据" />
+      <template v-else>
+        <el-table :data="tableData" stripe>
+          <el-table-column prop="username" label="账号" /><el-table-column prop="name" label="姓名" />
+          <el-table-column prop="department" label="部门" /><el-table-column prop="role_name" label="角色" />
+          <el-table-column prop="phone" label="手机号" />
+          <el-table-column label="状态" width="80">
+            <template #default="{row}"><el-tag :type="row.status==='active'?'success':'danger'" size="small">{{row.status==='active'?'启用':'停用'}}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="操作" width="220">
+            <template #default="{row}">
+              <el-button link type="primary" @click="openDialog(row)">修改</el-button>
+              <el-button link :type="row.status==='active'?'warning':'success'" @click="toggleStatus(row)">{{row.status==='active'?'停用':'启用'}}</el-button>
+              <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <el-pagination background layout="total, prev, pager, next" :total="total" :page-size="filters.per_page" v-model:current-page="filters.page" @current-change="loadData" />
+        </div>
+      </template>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="editing?'修改用户':'新增用户'" width="600px">
@@ -57,12 +60,20 @@ import { getUsers, createUser, updateUser, deleteUser } from '../api/users'
 import { getRoles } from '../api/roles'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+const loading = ref(false)
 const filters = ref({ name: '', status: '', page: 1, per_page: 10 })
 const tableData = ref([]); const total = ref(0)
 const dialogVisible = ref(false); const editing = ref(null); const roleOptions = ref([])
 const form = ref({ username:'',name:'',phone:'',department:'',role_id:'',password:'',statusBool:true })
 
-async function loadData() { const r = await getUsers(filters.value); tableData.value = r.items; total.value = r.total }
+async function loadData() {
+  loading.value = true
+  try {
+    const r = await getUsers(filters.value); tableData.value = r.items; total.value = r.total
+  } finally {
+    loading.value = false
+  }
+}
 async function loadRoles() { const r = await getRoles({per_page:100}); roleOptions.value = r.items }
 
 function openDialog(row=null) {

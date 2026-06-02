@@ -12,25 +12,28 @@
         <el-button type="primary" class="btn-green" @click="openDialog()">新增资产</el-button>
       </div>
     </el-card>
-    <el-card shadow="never">
-      <el-table :data="tableData" stripe>
-        <el-table-column prop="code" label="资产编码" width="100" /><el-table-column prop="name" label="资产名称" />
-        <el-table-column prop="category" label="分类" width="100" /><el-table-column prop="brand" label="品牌" width="80" />
-        <el-table-column prop="location" label="存放地点" />
-        <el-table-column label="状态" width="90">
-          <template #default="{row}"><el-tag :type="statusType(row.status)" size="small">{{statusLabel[row.status]}}</el-tag></template>
-        </el-table-column>
-        <el-table-column prop="owner_name" label="责任人" width="80" />
-        <el-table-column label="操作" width="140">
-          <template #default="{row}">
-            <el-button link type="primary" @click="viewDetail(row)">详情</el-button>
-            <el-button link type="primary" @click="openDialog(row)">修改</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <el-pagination background layout="total,prev,pager,next" :total="total" :page-size="filters.per_page" v-model:current-page="filters.page" @current-change="loadData" />
-      </div>
+    <el-card shadow="never" v-loading="loading">
+      <el-empty v-if="!loading && tableData.length === 0" description="暂无数据" />
+      <template v-else>
+        <el-table :data="tableData" stripe>
+          <el-table-column prop="code" label="资产编码" width="100" /><el-table-column prop="name" label="资产名称" />
+          <el-table-column prop="category" label="分类" width="100" /><el-table-column prop="brand" label="品牌" width="80" />
+          <el-table-column prop="location" label="存放地点" />
+          <el-table-column label="状态" width="90">
+            <template #default="{row}"><el-tag :type="statusType(row.status)" size="small">{{statusLabel[row.status]}}</el-tag></template>
+          </el-table-column>
+          <el-table-column prop="owner_name" label="责任人" width="80" />
+          <el-table-column label="操作" width="140">
+            <template #default="{row}">
+              <el-button link type="primary" @click="viewDetail(row)">详情</el-button>
+              <el-button link type="primary" @click="openDialog(row)">修改</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <el-pagination background layout="total,prev,pager,next" :total="total" :page-size="filters.per_page" v-model:current-page="filters.page" @current-change="loadData" />
+        </div>
+      </template>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="readonly?'资产详情':(editing?'修改资产':'新增资产')" width="700px">
@@ -65,12 +68,20 @@ import { ElMessage } from 'element-plus'
 
 const statusLabel = {idle:'闲置',distributed:'已派发',borrowing:'借用中',returned:'已退库'}
 const statusType = {idle:'success',distributed:'warning',borrowing:'',returned:'info'}
+const loading = ref(false)
 const filters = ref({code:'',name:'',status:'',page:1,per_page:10})
 const tableData = ref([]); const total = ref(0); const dialogVisible = ref(false)
 const editing = ref(null); const readonly = ref(false); const options = ref({})
 const form = ref({code:'',name:'',category:'',brand:'',model:'',serial_number:'',unit:'',purchase_date:'',location:'',status:'idle',notes:''})
 
-async function loadData() { const r=await getAssets(filters.value); tableData.value=r.items; total.value=r.total }
+async function loadData() {
+  loading.value = true
+  try {
+    const r=await getAssets(filters.value); tableData.value=r.items; total.value=r.total
+  } finally {
+    loading.value = false
+  }
+}
 async function loadOptions() { options.value = await getParamOptions() }
 
 function openDialog(row=null) {

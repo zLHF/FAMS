@@ -15,18 +15,38 @@
           <el-table-column prop="name" label="名称" />
           <el-table-column prop="category" label="分类" width="100" />
           <el-table-column label="状态" width="90">
-            <template #default="{ row }"><el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag></template>
+            <template #default="{ row }"><el-tag :type="statusType[row.status]" size="small">{{ statusLabel[row.status] }}</el-tag></template>
           </el-table-column>
           <el-table-column prop="owner_name" label="责任人" width="80" />
         </el-table>
       </div>
 
-      <div class="panel">
-        <div class="panel-head"><h2>快捷入口</h2></div>
-        <div class="quick-actions">
-          <router-link v-for="q in quickLinks" :key="q.path" :to="q.path">
-            <el-button style="width:100%;">{{ q.label }}</el-button>
-          </router-link>
+      <div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-head"><h2>待处理事项</h2></div>
+          <ul class="todo-list">
+            <li v-if="stats.borrowing > 0">
+              <b style="background:#fff3cd;color:#8a5a00;">{{ stats.borrowing }}</b>
+              <div><strong>借用中的资产</strong><span>请关注预计归还日期</span></div>
+            </li>
+            <li>
+              <b style="background:#e3f8ef;color:#13795b;">{{ stats.idle }}</b>
+              <div><strong>闲置资产待分配</strong><span>可进行派发或借用</span></div>
+            </li>
+            <li v-if="stats.returned > 0">
+              <b style="background:#e0f2fe;color:#075985;">{{ stats.returned }}</b>
+              <div><strong>已退库资产</strong><span>退回库房等待重新分配</span></div>
+            </li>
+          </ul>
+          <el-empty v-if="!stats.borrowing && !stats.idle && !stats.returned" description="暂无待处理事项" :image-size="60" />
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>快捷入口</h2></div>
+          <div class="quick-actions">
+            <router-link v-for="q in quickLinks" :key="q.path" :to="q.path">
+              <el-button style="width:100%;">{{ q.label }}</el-button>
+            </router-link>
+          </div>
         </div>
       </div>
     </div>
@@ -76,5 +96,10 @@ onMounted(load)
 .panel-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .panel-head h2 { font-size:17px; margin:0; }
 .quick-actions { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.todo-list { list-style:none; margin:0; padding:0; display:grid; gap:12px; }
+.todo-list li { display:flex; gap:12px; align-items:center; padding:12px; background:#f7fafc; border-radius:6px; }
+.todo-list b { width:34px; height:34px; display:grid; place-items:center; border-radius:6px; font-size:14px; }
+.todo-list div strong { display:block; font-size:14px; }
+.todo-list div span { display:block; font-size:12px; color:#66788a; margin-top:2px; }
 @media(max-width:900px) { .metrics, .content-grid { grid-template-columns:1fr; } }
 </style>

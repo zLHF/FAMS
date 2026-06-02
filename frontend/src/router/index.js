@@ -17,6 +17,7 @@ const routes = [
       { path: 'asset-return', name: 'AssetReturn', component: () => import('../views/AssetReturn.vue') },
       { path: 'asset-revert', name: 'AssetRevert', component: () => import('../views/AssetRevert.vue') },
       { path: 'asset-owner-change', name: 'AssetOwnerChange', component: () => import('../views/AssetOwnerChange.vue') },
+      { path: 'logs', name: 'Logs', component: () => import('../views/OperationLogs.vue') },
     ],
   },
 ]

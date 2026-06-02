@@ -7,23 +7,26 @@
         <el-button @click="loadData">查询</el-button>
       </div>
     </el-card>
-    <el-card shadow="never">
-      <el-table :data="tableData" stripe>
-        <el-table-column prop="code" label="资产编码" /><el-table-column prop="name" label="资产名称" />
-        <el-table-column prop="owner_name" label="原领用人" />
-        <el-table-column prop="location" label="使用地点" />
-        <el-table-column label="状态" width="90">
-          <template #default="{row}"><el-tag type="warning" size="small">已派发</el-tag></template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
-          <template #default="{row}">
-            <el-button link type="primary" @click="openDialog(row)">变更</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <el-pagination background layout="total,prev,pager,next" :total="total" :page-size="filters.per_page" v-model:current-page="filters.page" @current-change="loadData" />
-      </div>
+    <el-card shadow="never" v-loading="loading">
+      <el-empty v-if="!loading && tableData.length === 0" description="暂无数据" />
+      <template v-else>
+        <el-table :data="tableData" stripe>
+          <el-table-column prop="code" label="资产编码" /><el-table-column prop="name" label="资产名称" />
+          <el-table-column prop="owner_name" label="原领用人" />
+          <el-table-column prop="location" label="使用地点" />
+          <el-table-column label="状态" width="90">
+            <template #default="{row}"><el-tag type="warning" size="small">已派发</el-tag></template>
+          </el-table-column>
+          <el-table-column label="操作" width="100">
+            <template #default="{row}">
+              <el-button link type="primary" @click="openDialog(row)">变更</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <el-pagination background layout="total,prev,pager,next" :total="total" :page-size="filters.per_page" v-model:current-page="filters.page" @current-change="loadData" />
+        </div>
+      </template>
     </el-card>
 
     <el-dialog v-model="dialogVisible" title="变更领用人" width="500px">
@@ -57,13 +60,21 @@ import { getUsers } from '../api/users'
 import { getParamOptions } from '../api/assetParams'
 import { ElMessage } from 'element-plus'
 
+const loading = ref(false)
 const filters = ref({code:'',name:'',status:'distributed',page:1,per_page:10})
 const tableData = ref([]); const total = ref(0)
 const dialogVisible = ref(false); const currentAsset = ref(null)
 const users = ref([]); const locations = ref([])
 const form = ref({new_owner_id:'',change_date:'',location:'',reason:''})
 
-async function loadData() { const r=await getAssets(filters.value); tableData.value=r.items; total.value=r.total }
+async function loadData() {
+  loading.value = true
+  try {
+    const r=await getAssets(filters.value); tableData.value=r.items; total.value=r.total
+  } finally {
+    loading.value = false
+  }
+}
 async function loadUsers() { const r=await getUsers({per_page:100,status:'active'}); users.value=r.items }
 async function loadOptions() { const r=await getParamOptions(); locations.value=r.location||[] }
 

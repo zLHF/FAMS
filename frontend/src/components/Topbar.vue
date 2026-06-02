@@ -6,7 +6,7 @@
     </div>
     <div class="user-chip">
       {{ auth.user?.name || '未登录' }}
-      <el-button link type="danger" @click="auth.logout()" style="margin-left:8px;">退出</el-button>
+      <el-button link type="danger" @click="auth.logout()" style="margin-left:8px;" aria-label="退出登录">退出</el-button>
     </div>
   </div>
 </template>
