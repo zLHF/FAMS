@@ -19,7 +19,7 @@ import Topbar from './Topbar.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
-const sidebarVisible = ref(false)
+const sidebarVisible = ref(window.innerWidth > 900)
 
 const titleMap = {
   '/': '工作台', '/users': '用户管理', '/roles': '角色管理', '/permissions': '权限管理',
