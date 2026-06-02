@@ -90,15 +90,15 @@ def create_asset():
     a = Asset(
         code=data["code"],
         name=data["name"],
-        category=data.get("category"),
-        brand=data.get("brand"),
-        model=data.get("model"),
-        serial_number=data.get("serial_number"),
-        unit=data.get("unit"),
-        purchase_date=data.get("purchase_date"),
-        location=data.get("location"),
+        category=data.get("category") or None,
+        brand=data.get("brand") or None,
+        model=data.get("model") or None,
+        serial_number=data.get("serial_number") or None,
+        unit=data.get("unit") or None,
+        purchase_date=data.get("purchase_date") or None,
+        location=data.get("location") or None,
         status=data.get("status", "idle"),
-        notes=data.get("notes"),
+        notes=data.get("notes") or None,
     )
     db.session.add(a)
     _log(request.current_user.id, "create", "asset", a.id, f"新增资产 {a.code}")
@@ -116,7 +116,7 @@ def update_asset(id):
         "unit", "purchase_date", "location", "status", "notes",
     ]:
         if field in data:
-            setattr(a, field, data[field])
+            setattr(a, field, data[field] or None)
     _log(request.current_user.id, "update", "asset", a.id, f"修改资产 {a.code}")
     db.session.commit()
     return jsonify(_asset_dict(a))
