@@ -59,7 +59,7 @@ import { getParamOptions } from '../api/assetParams'
 import { ElMessage } from 'element-plus'
 
 const statusLabel = {idle:'闲置',distributed:'已派发',borrowing:'借用中',returned:'已退库'}
-const statusType = {idle:'success',distributed:'warning',borrowing:'',returned:'info'}
+const statusType = {idle:'success',distributed:'warning',borrowing:'danger',returned:'info'}
 const loading = ref(false)
 const filters = ref({code:'',name:'',status:'',page:1,per_page:10})
 const tableData = ref([]); const total = ref(0)

@@ -58,7 +58,7 @@ import { ref, onMounted } from 'vue'
 import { getStats, getRecentAssets } from '../api/dashboard'
 
 const statusLabel = { idle: '闲置', distributed: '已派发', borrowing: '借用中', returned: '已退库' }
-const statusType = { idle: 'success', distributed: 'warning', borrowing: '', returned: 'info' }
+const statusType = { idle: 'success', distributed: 'warning', borrowing: 'danger', returned: 'info' }
 
 const stats = ref({})
 const recentAssets = ref([])
