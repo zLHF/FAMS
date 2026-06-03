@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from ..extensions import db
 from ..models.operation_log import OperationLog
 from ..utils.decorators import login_required
 
@@ -13,7 +12,7 @@ def list_logs():
     per_page = min(request.args.get("per_page", 20, type=int), 100)
     action = request.args.get("action", "")
 
-    query = OperationLog.query
+    query = OperationLog.query.filter_by(tenant_id=request.current_tenant.id)
     if action:
         query = query.filter_by(action=action)
 

@@ -21,7 +21,7 @@
       </div>
       <div class="login-card">
         <h2>欢迎登录</h2>
-        <p style="color:#7b8794">请输入账号和密码</p>
+        <p style="color:#7b8794">请输入账号和密码，系统会自动进入默认租户</p>
         <el-form :model="form" @submit.prevent="handleLogin" style="margin-top:24px;">
           <el-form-item>
             <el-input v-model="form.username" placeholder="请输入账号" size="large" />
@@ -60,7 +60,8 @@ async function handleLogin() {
   loading.value = true
   try {
     await auth.login(form.value.username, form.value.password)
-    ElMessage.success('登录成功')
+    const tenantName = auth.currentTenant?.name ? `（${auth.currentTenant.name}）` : ''
+    ElMessage.success(`登录成功${tenantName}`)
     router.push('/')
   } catch {} finally {
     loading.value = false

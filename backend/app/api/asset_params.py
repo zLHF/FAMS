@@ -8,9 +8,20 @@ from ..utils.decorators import login_required, role_required
 params_bp = Blueprint("asset_params", __name__, url_prefix="/api/asset-params")
 
 
+def _current_tenant_id():
+    return request.current_tenant.id
+
+
 def _log(user_id, action, target_type, target_id, detail):
     db.session.add(
-        OperationLog(user_id=user_id, action=action, target_type=target_type, target_id=target_id, detail=detail)
+        OperationLog(
+            tenant_id=_current_tenant_id(),
+            user_id=user_id,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            detail=detail,
+        )
     )
 
 
@@ -22,7 +33,7 @@ def list_params():
     type_ = request.args.get("type", "")
     name = request.args.get("name", "")
 
-    query = AssetParam.query
+    query = AssetParam.query.filter_by(tenant_id=_current_tenant_id())
     if type_:
         query = query.filter_by(type=type_)
     if name:
@@ -43,14 +54,15 @@ def list_params():
 
 
 @params_bp.route("", methods=["POST"])
-@role_required("admin")
+@role_required("admin", "tenant_admin")
 def create_param():
     data = request.get_json()
     if not data or not data.get("type") or not data.get("name"):
         return jsonify({"error": "缺少必填字段"}), 400
-    if AssetParam.query.filter_by(type=data["type"], name=data["name"]).first():
+    if AssetParam.query.filter_by(tenant_id=_current_tenant_id(), type=data["type"], name=data["name"]).first():
         return jsonify({"error": "该类型下参数名称已存在"}), 400
     p = AssetParam(
+        tenant_id=_current_tenant_id(),
         type=data["type"],
         name=data["name"],
         code=data.get("code", ""),
@@ -64,9 +76,9 @@ def create_param():
 
 
 @params_bp.route("/<int:id>", methods=["PUT"])
-@role_required("admin")
+@role_required("admin", "tenant_admin")
 def update_param(id):
-    p = AssetParam.query.filter_by(id=id).first_or_404()
+    p = AssetParam.query.filter_by(id=id, tenant_id=_current_tenant_id()).first_or_404()
     data = request.get_json()
     if data.get("name"):
         p.name = data["name"]
@@ -82,10 +94,11 @@ def update_param(id):
 
 
 @params_bp.route("/<int:id>", methods=["DELETE"])
-@role_required("admin")
+@role_required("admin", "tenant_admin")
 def delete_param(id):
-    p = AssetParam.query.filter_by(id=id).first_or_404()
+    p = AssetParam.query.filter_by(id=id, tenant_id=_current_tenant_id()).first_or_404()
     ref = Asset.query.filter(
+        Asset.tenant_id == _current_tenant_id(),
         (Asset.category == p.name) | (Asset.brand == p.name) | (Asset.unit == p.name) | (Asset.location == p.name)
     ).first()
     if ref:
@@ -99,7 +112,7 @@ def delete_param(id):
 @params_bp.route("/options", methods=["GET"])
 @login_required
 def param_options():
-    params = AssetParam.query.filter_by(status="active").order_by(AssetParam.sort_order).all()
+    params = AssetParam.query.filter_by(tenant_id=_current_tenant_id(), status="active").order_by(AssetParam.sort_order).all()
     result = {}
     for p in params:
         result.setdefault(p.type, []).append({"id": p.id, "name": p.name, "code": p.code})

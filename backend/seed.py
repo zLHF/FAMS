@@ -8,6 +8,8 @@ from app.models.permission import Permission
 from app.models.user import User
 from app.models.asset_param import AssetParam
 from app.models.asset import Asset
+from app.models.tenant import Tenant
+from app.models.tenant_membership import TenantMembership
 
 
 def seed():
@@ -18,6 +20,11 @@ def seed():
     with app.app_context():
         db.drop_all()
         db.create_all()
+
+        # 租户
+        tenant = Tenant(name="默认租户", code="default", status="active")
+        db.session.add(tenant)
+        db.session.flush()
 
         # 权限树
         perms_data = [
@@ -44,8 +51,8 @@ def seed():
             perm_map[p["code"]] = obj
 
         # 角色
-        admin_role = Role(name="系统管理员", code="admin", status="active")
-        asset_role = Role(name="资产管理员", code="asset_manager", description="负责资产日常管理", status="active")
+        admin_role = Role(tenant_id=tenant.id, name="系统管理员", code="admin", status="active")
+        asset_role = Role(tenant_id=tenant.id, name="资产管理员", code="asset_manager", description="负责资产日常管理", status="active")
         db.session.add_all([admin_role, asset_role])
         db.session.flush()
 
@@ -79,6 +86,13 @@ def seed():
         )
         db.session.add_all([admin_user, zhangsan, lisi, wangwu])
         db.session.flush()
+        db.session.add_all([
+            TenantMembership(tenant_id=tenant.id, user_id=admin_user.id, role_id=admin_role.id, status="active", is_default=True),
+            TenantMembership(tenant_id=tenant.id, user_id=zhangsan.id, role_id=asset_role.id, department="研发部", status="active", is_default=True),
+            TenantMembership(tenant_id=tenant.id, user_id=lisi.id, role_id=asset_role.id, department="财务部", status="active", is_default=True),
+            TenantMembership(tenant_id=tenant.id, user_id=wangwu.id, role_id=asset_role.id, department="市场部", status="active", is_default=True),
+        ])
+        db.session.flush()
 
         # 基础参数
         params_data = [
@@ -92,7 +106,7 @@ def seed():
             ("location", "研发部", "rd"), ("location", "会议室", "meeting"),
         ]
         for idx, (t, n, c) in enumerate(params_data):
-            db.session.add(AssetParam(type=t, name=n, code=c, sort_order=idx, status="active"))
+            db.session.add(AssetParam(tenant_id=tenant.id, type=t, name=n, code=c, sort_order=idx, status="active"))
 
         # 示例资产
         assets_data = [
@@ -108,11 +122,12 @@ def seed():
         for ad in assets_data:
             owner_id = ad.pop("owner_id", None)
             borrower_id = ad.pop("borrower_id", None)
-            a = Asset(**ad, owner_id=owner_id, borrower_id=borrower_id)
+            a = Asset(tenant_id=tenant.id, **ad, owner_id=owner_id, borrower_id=borrower_id)
             db.session.add(a)
 
         db.session.commit()
         print("✅ 种子数据初始化完成")
+        print(f"   租户: {Tenant.query.count()} 条")
         print(f"   用户: {User.query.count()} 条")
         print(f"   角色: {Role.query.count()} 条")
         print(f"   权限: {Permission.query.count()} 条")

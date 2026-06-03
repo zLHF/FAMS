@@ -1,10 +1,15 @@
 from app.extensions import db, bcrypt
 from app.models.user import User
 from app.models.role import Role
+from app.models.tenant import Tenant
+from app.models.tenant_membership import TenantMembership
 
 
 def setup_admin(db):
-    role = Role(name="管理员", code="admin", status="active")
+    tenant = Tenant(name="默认租户", code="default", status="active")
+    db.session.add(tenant)
+    db.session.flush()
+    role = Role(tenant_id=tenant.id, name="管理员", code="admin", status="active")
     db.session.add(role)
     db.session.flush()
     user = User(
@@ -13,6 +18,8 @@ def setup_admin(db):
         name="管理员", role_id=role.id, status="active",
     )
     db.session.add(user)
+    db.session.flush()
+    db.session.add(TenantMembership(tenant_id=tenant.id, user_id=user.id, role_id=role.id, status="active", is_default=True))
     db.session.commit()
     return user, role
 
