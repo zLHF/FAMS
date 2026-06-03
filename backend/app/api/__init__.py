@@ -7,6 +7,9 @@ def register_blueprints(app):
     from .assets import assets_bp
     from .dashboard import dashboard_bp
     from .logs import logs_bp
+    from .tenants import tenants_bp
+    from .open_api import open_api_bp
+    from .sso import sso_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(users_bp)
@@ -16,3 +19,6 @@ def register_blueprints(app):
     app.register_blueprint(assets_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(logs_bp)
+    app.register_blueprint(tenants_bp)
+    app.register_blueprint(open_api_bp)
+    app.register_blueprint(sso_bp)

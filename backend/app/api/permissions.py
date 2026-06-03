@@ -24,6 +24,9 @@ def permission_tree():
 @perms_bp.route("/role/<int:role_id>", methods=["GET"])
 @login_required
 def role_perms(role_id):
-    Role.query.filter_by(id=role_id, tenant_id=request.current_tenant.id).first_or_404()
+    tid = request.current_tenant.id if request.current_tenant else None
+    if tid is None:
+        return jsonify({"permission_ids": []})
+    Role.query.filter_by(id=role_id, tenant_id=tid).first_or_404()
     rows = db.session.execute(role_permissions.select().where(role_permissions.c.role_id == role_id)).fetchall()
     return jsonify({"permission_ids": [r.permission_id for r in rows]})

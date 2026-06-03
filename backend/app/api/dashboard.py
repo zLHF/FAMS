@@ -8,17 +8,21 @@ dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/api/dashboard")
 
 
 def _current_tenant_id():
-    return request.current_tenant.id
+    tenant = getattr(request, "current_tenant", None)
+    return tenant.id if tenant else None
 
 
 @dashboard_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
-    total = Asset.query.filter_by(tenant_id=_current_tenant_id()).count()
-    idle = Asset.query.filter_by(tenant_id=_current_tenant_id(), status="idle").count()
-    distributed = Asset.query.filter_by(tenant_id=_current_tenant_id(), status="distributed").count()
-    borrowing = Asset.query.filter_by(tenant_id=_current_tenant_id(), status="borrowing").count()
-    returned = Asset.query.filter_by(tenant_id=_current_tenant_id(), status="returned").count()
+    tid = _current_tenant_id()
+    if tid is None:
+        return jsonify({"total": 0, "idle": 0, "distributed": 0, "borrowing": 0, "returned": 0})
+    total = Asset.query.filter_by(tenant_id=tid).count()
+    idle = Asset.query.filter_by(tenant_id=tid, status="idle").count()
+    distributed = Asset.query.filter_by(tenant_id=tid, status="distributed").count()
+    borrowing = Asset.query.filter_by(tenant_id=tid, status="borrowing").count()
+    returned = Asset.query.filter_by(tenant_id=tid, status="returned").count()
     return jsonify({
         "total": total, "idle": idle,
         "distributed": distributed, "borrowing": borrowing, "returned": returned,
@@ -28,7 +32,10 @@ def stats():
 @dashboard_bp.route("/recent-assets", methods=["GET"])
 @login_required
 def recent_assets():
-    assets = Asset.query.filter_by(tenant_id=_current_tenant_id()).order_by(Asset.id.desc()).limit(5).all()
+    tid = _current_tenant_id()
+    if tid is None:
+        return jsonify({"items": []})
+    assets = Asset.query.filter_by(tenant_id=tid).order_by(Asset.id.desc()).limit(5).all()
     return jsonify({
         "items": [{
             "id": a.id, "code": a.code, "name": a.name,
@@ -43,9 +50,13 @@ def recent_assets():
 @login_required
 def pending():
     """返回待处理事项"""
+    tid = _current_tenant_id()
+    if tid is None:
+        return jsonify({"overdue_borrows": [], "recent_today": []})
+
     # 逾期借用
     overdue = FlowRecord.query.filter(
-        FlowRecord.tenant_id == _current_tenant_id(),
+        FlowRecord.tenant_id == tid,
         FlowRecord.flow_type == "borrow",
         FlowRecord.detail["expected_return_date"].as_string() < str(date.today())
     ).all()
@@ -53,7 +64,7 @@ def pending():
     # 获取逾期借用中的资产
     overdue_assets = []
     for record in overdue:
-        asset = Asset.query.filter_by(id=record.asset_id, tenant_id=_current_tenant_id()).first()
+        asset = Asset.query.filter_by(id=record.asset_id, tenant_id=tid).first()
         if asset and asset.status == "borrowing":
             overdue_assets.append({
                 "id": asset.id, "code": asset.code, "name": asset.name,
@@ -64,7 +75,7 @@ def pending():
     # 今日新增资产
     today = str(date.today())
     recent = Asset.query.filter(
-        Asset.tenant_id == _current_tenant_id(),
+        Asset.tenant_id == tid,
         Asset.created_at.like(f"{today}%")
     ).order_by(Asset.id.desc()).limit(5).all()
 

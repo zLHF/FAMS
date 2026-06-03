@@ -15,3 +15,6 @@ class Tenant(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    # SSO 相关字段
+    plt_enterprise_name = db.Column(db.String(256), nullable=True)

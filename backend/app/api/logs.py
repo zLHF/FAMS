@@ -12,7 +12,11 @@ def list_logs():
     per_page = min(request.args.get("per_page", 20, type=int), 100)
     action = request.args.get("action", "")
 
-    query = OperationLog.query.filter_by(tenant_id=request.current_tenant.id)
+    tid = request.current_tenant.id if request.current_tenant else None
+    if tid is None:
+        return jsonify({"items": [], "total": 0, "page": page, "per_page": per_page})
+
+    query = OperationLog.query.filter_by(tenant_id=tid)
     if action:
         query = query.filter_by(action=action)
 

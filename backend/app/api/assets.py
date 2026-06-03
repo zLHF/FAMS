@@ -12,7 +12,8 @@ assets_bp = Blueprint("assets", __name__, url_prefix="/api/assets")
 
 
 def _current_tenant_id():
-    return request.current_tenant.id
+    t = getattr(request, "current_tenant", None)
+    return t.id if t else None
 
 
 def _asset_dict(a, detail=False):
@@ -67,7 +68,10 @@ def list_assets():
     category = request.args.get("category", "")
     status = request.args.get("status", "")
 
-    query = Asset.query.filter_by(tenant_id=_current_tenant_id())
+    tid = _current_tenant_id()
+    if tid is None:
+        return jsonify({"items": [], "total": 0, "page": page, "per_page": per_page})
+    query = Asset.query.filter_by(tenant_id=tid)
     if code:
         query = query.filter(Asset.code.contains(code))
     if name:

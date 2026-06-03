@@ -47,10 +47,11 @@ import { useAuthStore } from '../stores/auth'
 const route = useRoute()
 const auth = useAuthStore()
 
-const isAdmin = computed(() => auth.user?.role === 'admin')
+const isAdmin = computed(() => ['system_admin', 'admin', 'tenant_admin'].includes(auth.user?.role))
 
 const personnelMenus = [
   { path: '/users', label: '用户管理' },
+  { path: '/tenants', label: '租户管理' },
   { path: '/roles', label: '角色管理' },
   { path: '/permissions', label: '权限管理' },
 ]

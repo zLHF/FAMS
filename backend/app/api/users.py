@@ -38,7 +38,8 @@ def _log(tenant_id, user_id, action, target_type, target_id, detail):
 
 
 def _current_tenant_id():
-    return request.current_tenant.id
+    t = getattr(request, "current_tenant", None)
+    return t.id if t else None
 
 
 def _role_in_current_tenant(role_id):
@@ -54,7 +55,11 @@ def list_users():
     role_id = request.args.get("role_id", type=int)
     status = request.args.get("status", "")
 
-    query = TenantMembership.query.join(User).filter(TenantMembership.tenant_id == _current_tenant_id())
+    tid = _current_tenant_id()
+    if tid is None:
+        return jsonify({"items": [], "total": 0, "page": page, "per_page": per_page})
+
+    query = TenantMembership.query.join(User).filter(TenantMembership.tenant_id == tid)
     if name:
         query = query.filter(User.name.contains(name) | User.username.contains(name))
     if role_id:
@@ -74,7 +79,7 @@ def list_users():
 
 
 @users_bp.route("", methods=["POST"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def create_user():
     data = request.get_json()
     if not data or not data.get("username") or not data.get("name") or not data.get("role_id"):
@@ -119,7 +124,7 @@ def create_user():
 
 
 @users_bp.route("/<int:id>", methods=["PUT"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def update_user(id):
     membership = TenantMembership.query.filter_by(tenant_id=_current_tenant_id(), user_id=id).first_or_404()
     user = membership.user
@@ -151,7 +156,7 @@ def update_user(id):
 
 
 @users_bp.route("/<int:id>", methods=["DELETE"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def delete_user(id):
     membership = TenantMembership.query.filter_by(tenant_id=_current_tenant_id(), user_id=id).first_or_404()
     user = membership.user

@@ -19,4 +19,12 @@ def create_app(config_class=Config):
     from .api import register_blueprints
     register_blueprints(app)
 
+    # 启动心跳定时任务（仅非测试环境）
+    if not app.config.get("TESTING"):
+        from .utils.heartbeat import start_heartbeat_scheduler, stop_heartbeat_scheduler
+        start_heartbeat_scheduler(app)
+
+        import atexit
+        atexit.register(stop_heartbeat_scheduler)
+
     return app

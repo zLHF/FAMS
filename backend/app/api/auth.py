@@ -5,9 +5,11 @@ from ..models.user import User
 from ..models.operation_log import OperationLog
 from ..models.tenant import Tenant
 from ..models.tenant_membership import TenantMembership
+from ..models.role import Role
 from ..utils.auth import generate_token, decode_token
 from ..utils.token_blocklist import revoke_token
 from ..utils.tenant import ensure_default_tenant, ensure_membership
+from ..utils.decorators import _is_system_admin
 from ..config import Config
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -99,12 +101,27 @@ def _user_payload(user, membership):
 
 def _issue_login_response(user, membership, memberships=None):
     role_code = membership.role.code if membership and membership.role else ""
-    token = generate_token(user.id, role_code, membership.tenant_id, membership.id)
+    token = generate_token(user.id, role_code, membership.tenant_id if membership else None, membership.id if membership else None)
     return {
         "token": token,
         "user": _user_payload(user, membership),
-        "tenant": _tenant_dict(membership),
+        "tenant": _tenant_dict(membership) if membership else None,
         "tenants": [_tenant_dict(m) for m in memberships] if memberships is not None else None,
+    }
+
+
+def _system_admin_login_response(user):
+    """系统管理员登录响应 — 返回所有租户列表。"""
+    all_tenants = Tenant.query.filter_by(status="active").order_by(Tenant.id).all()
+    token = generate_token(user.id, "system_admin", None, None)
+    return {
+        "token": token,
+        "user": _user_payload(user, None),
+        "tenant": None,
+        "tenants": [
+            {"id": t.id, "name": t.name, "code": t.code, "role": "system_admin", "is_default": False}
+            for t in all_tenants
+        ],
     }
 
 
@@ -140,6 +157,20 @@ def login():
     if user.status == "disabled":
         return jsonify({"error": "该账号已停用"}), 403
 
+    _clear_failed_login(username)
+
+    # 系统管理员走特殊登录逻辑
+    if _is_system_admin(user):
+        log = OperationLog(
+            user_id=user.id, action="login",
+            target_type="user", target_id=user.id,
+            detail="系统管理员登录",
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(_system_admin_login_response(user))
+
+    # 普通用户走现有逻辑
     memberships = _ensure_user_membership(user)
     if not memberships:
         return jsonify({"error": "该账号未加入任何租户"}), 403
@@ -149,8 +180,6 @@ def login():
         membership = next((m for m in memberships if m.tenant_id == int(tenant_id)), None)
         if not membership:
             return jsonify({"error": "无权访问所选租户"}), 403
-
-    _clear_failed_login(username)
 
     log = OperationLog(
         tenant_id=membership.tenant_id,
@@ -175,6 +204,16 @@ def tenants():
     user = db.session.get(User, payload["user_id"])
     if not user or user.status == "disabled":
         return jsonify({"error": "用户不存在或已停用"}), 401
+
+    # 系统管理员返回所有租户
+    if _is_system_admin(user):
+        all_tenants = Tenant.query.filter_by(status="active").order_by(Tenant.id).all()
+        return jsonify({"items": [
+            {"id": t.id, "name": t.name, "code": t.code, "role": "system_admin", "is_default": False}
+            for t in all_tenants
+        ]})
+
+    # 普通用户返回已加入的租户
     memberships = _ensure_user_membership(user)
     return jsonify({"items": [_tenant_dict(m) for m in memberships]})
 
@@ -194,6 +233,47 @@ def switch_tenant():
     user = db.session.get(User, payload["user_id"])
     if not user or user.status == "disabled":
         return jsonify({"error": "用户不存在或已停用"}), 401
+
+    tenant = db.session.get(Tenant, int(tenant_id))
+    if not tenant or tenant.status == "disabled":
+        return jsonify({"error": "租户不存在或已停用"}), 403
+
+    # 系统管理员可切换到任意租户
+    if _is_system_admin(user):
+        all_tenants = Tenant.query.filter_by(status="active").order_by(Tenant.id).all()
+
+        # 查找或创建 membership
+        membership = TenantMembership.query.filter_by(
+            tenant_id=tenant.id, user_id=user.id, status="active"
+        ).first()
+
+        if not membership:
+            tenant_admin_role = Role.query.filter_by(
+                tenant_id=tenant.id, code="tenant_admin"
+            ).first()
+            membership = TenantMembership(
+                tenant_id=tenant.id,
+                user_id=user.id,
+                role_id=tenant_admin_role.id if tenant_admin_role else None,
+                status="active",
+                is_default=False,
+            )
+            db.session.add(membership)
+            db.session.flush()
+
+        role_code = membership.role.code if membership.role else "system_admin"
+        new_token = generate_token(user.id, role_code, tenant.id, membership.id)
+        return jsonify({
+            "token": new_token,
+            "user": _user_payload(user, membership),
+            "tenant": _tenant_dict(membership),
+            "tenants": [
+                {"id": t.id, "name": t.name, "code": t.code, "role": "system_admin", "is_default": False}
+                for t in all_tenants
+            ],
+        })
+
+    # 普通用户只能切换到已加入的租户
     memberships = _ensure_user_membership(user)
     membership = next((m for m in memberships if m.tenant_id == int(tenant_id)), None)
     if not membership:
@@ -236,6 +316,18 @@ def me():
     if not user or user.status == "disabled":
         return jsonify({"error": "用户不存在或已停用"}), 401
 
+    # 系统管理员
+    if _is_system_admin(user):
+        result = _user_payload(user, None)
+        all_tenants = Tenant.query.filter_by(status="active").order_by(Tenant.id).all()
+        result["tenants"] = [
+            {"id": t.id, "name": t.name, "code": t.code, "role": "system_admin", "is_default": False}
+            for t in all_tenants
+        ]
+        result["tenant"] = None
+        return jsonify(result)
+
+    # 普通用户
     memberships = _ensure_user_membership(user)
     tenant_id = payload.get("tenant_id")
     membership = next((m for m in memberships if m.tenant_id == tenant_id), None) or memberships[0]

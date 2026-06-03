@@ -21,16 +21,37 @@ def seed():
         db.drop_all()
         db.create_all()
 
-        # 租户
+        # ---- 全局角色（无 tenant_id，系统级） ----
+        system_admin_role = Role(
+            tenant_id=None, name="系统管理员", code="system_admin",
+            description="系统最高权限管理员，可管理所有租户", status="active",
+        )
+        db.session.add(system_admin_role)
+        db.session.flush()
+
+        # ---- 默认租户 ----
         tenant = Tenant(name="默认租户", code="default", status="active")
         db.session.add(tenant)
         db.session.flush()
 
-        # 权限树
+        # ---- 租户内角色 ----
+        tenant_admin_role = Role(
+            tenant_id=tenant.id, name="租户管理员", code="tenant_admin",
+            description="租户管理员，可管理本租户用户和配置", status="active",
+        )
+        asset_role = Role(
+            tenant_id=tenant.id, name="资产管理员", code="asset_manager",
+            description="负责资产日常管理", status="active",
+        )
+        db.session.add_all([tenant_admin_role, asset_role])
+        db.session.flush()
+
+        # ---- 权限树 ----
         perms_data = [
             {"name": "工作台", "code": "dashboard"},
             {"name": "人员管理", "code": "personnel"},
             {"name": "用户管理", "code": "users", "parent": "personnel"},
+            {"name": "租户管理", "code": "tenants", "parent": "personnel"},
             {"name": "角色管理", "code": "roles", "parent": "personnel"},
             {"name": "权限管理", "code": "permissions", "parent": "personnel"},
             {"name": "基础参数设置", "code": "asset_params"},
@@ -50,30 +71,34 @@ def seed():
             db.session.flush()
             perm_map[p["code"]] = obj
 
-        # 角色
-        admin_role = Role(tenant_id=tenant.id, name="系统管理员", code="admin", status="active")
-        asset_role = Role(tenant_id=tenant.id, name="资产管理员", code="asset_manager", description="负责资产日常管理", status="active")
-        db.session.add_all([admin_role, asset_role])
-        db.session.flush()
-
-        # 管理员全部权限
+        # 租户管理员和资产管理员的权限（系统管理员不需要显式关联）
         from app.models.role import role_permissions
         for p in perm_map.values():
             db.session.execute(
-                role_permissions.insert().values(role_id=admin_role.id, permission_id=p.id)
+                role_permissions.insert().values(role_id=tenant_admin_role.id, permission_id=p.id)
             )
+        for p in perm_map.values():
+            if p.code not in ("personnel", "users", "tenants", "roles", "permissions"):
+                db.session.execute(
+                    role_permissions.insert().values(role_id=asset_role.id, permission_id=p.id)
+                )
 
-        # 用户
+        # ---- 用户 ----
+        # 系统管理员 — 全局角色，不属于任何租户
         admin_user = User(
             username="admin",
             password_hash=bcrypt.generate_password_hash("123456").decode("utf-8"),
-            name="管理员", role_id=admin_role.id, status="active",
+            name="系统管理员", role_id=system_admin_role.id, status="active",
         )
+        db.session.add(admin_user)
+
+        # 租户管理员 — 属于默认租户
         zhangsan = User(
             username="zhangsan",
             password_hash=bcrypt.generate_password_hash("123456").decode("utf-8"),
-            name="张三", department="研发部", role_id=asset_role.id, status="active",
+            name="张三", department="研发部", role_id=tenant_admin_role.id, status="active",
         )
+        # 普通用户
         lisi = User(
             username="lisi",
             password_hash=bcrypt.generate_password_hash("123456").decode("utf-8"),
@@ -84,17 +109,18 @@ def seed():
             password_hash=bcrypt.generate_password_hash("123456").decode("utf-8"),
             name="王五", department="市场部", role_id=asset_role.id, status="active",
         )
-        db.session.add_all([admin_user, zhangsan, lisi, wangwu])
+        db.session.add_all([zhangsan, lisi, wangwu])
         db.session.flush()
+
+        # 租户成员关系 — 系统管理员不需要 membership
         db.session.add_all([
-            TenantMembership(tenant_id=tenant.id, user_id=admin_user.id, role_id=admin_role.id, status="active", is_default=True),
-            TenantMembership(tenant_id=tenant.id, user_id=zhangsan.id, role_id=asset_role.id, department="研发部", status="active", is_default=True),
+            TenantMembership(tenant_id=tenant.id, user_id=zhangsan.id, role_id=tenant_admin_role.id, department="研发部", status="active", is_default=True),
             TenantMembership(tenant_id=tenant.id, user_id=lisi.id, role_id=asset_role.id, department="财务部", status="active", is_default=True),
             TenantMembership(tenant_id=tenant.id, user_id=wangwu.id, role_id=asset_role.id, department="市场部", status="active", is_default=True),
         ])
         db.session.flush()
 
-        # 基础参数
+        # ---- 基础参数 ----
         params_data = [
             ("category", "电脑设备", "computer"), ("category", "办公家具", "furniture"),
             ("category", "网络设备", "network"), ("category", "办公电器", "appliance"),
@@ -108,7 +134,7 @@ def seed():
         for idx, (t, n, c) in enumerate(params_data):
             db.session.add(AssetParam(tenant_id=tenant.id, type=t, name=n, code=c, sort_order=idx, status="active"))
 
-        # 示例资产
+        # ---- 示例资产 ----
         assets_data = [
             {"code": "A001", "name": "联想ThinkPad X1", "category": "电脑设备", "brand": "联想", "model": "ThinkPad X1 Carbon", "unit": "台", "location": "研发部", "status": "distributed", "owner_id": zhangsan.id},
             {"code": "A002", "name": "戴尔U2720显示器", "category": "电脑设备", "brand": "戴尔", "model": "U2720Q", "unit": "台", "location": "研发部", "status": "distributed", "owner_id": zhangsan.id},
@@ -127,9 +153,10 @@ def seed():
 
         db.session.commit()
         print("✅ 种子数据初始化完成")
+        print(f"   全局角色: system_admin")
         print(f"   租户: {Tenant.query.count()} 条")
-        print(f"   用户: {User.query.count()} 条")
-        print(f"   角色: {Role.query.count()} 条")
+        print(f"   用户: {User.query.count()} 条 (admin=系统管理员, zhangsan=租户管理员)")
+        print(f"   租户角色: {Role.query.filter(Role.tenant_id != None).count()} 条")
         print(f"   权限: {Permission.query.count()} 条")
         print(f"   参数: {AssetParam.query.count()} 条")
         print(f"   资产: {Asset.query.count()} 条")

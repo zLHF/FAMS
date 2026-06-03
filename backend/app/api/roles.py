@@ -9,7 +9,8 @@ roles_bp = Blueprint("roles", __name__, url_prefix="/api/roles")
 
 
 def _current_tenant_id():
-    return request.current_tenant.id
+    t = getattr(request, "current_tenant", None)
+    return t.id if t else None
 
 
 @roles_bp.route("", methods=["GET"])
@@ -19,7 +20,10 @@ def list_roles():
     per_page = min(request.args.get("per_page", 50, type=int), 100)
     name = request.args.get("name", "")
     status = request.args.get("status", "")
-    query = Role.query.filter_by(tenant_id=_current_tenant_id())
+    tid = _current_tenant_id()
+    if tid is None:
+        return jsonify({"items": [], "total": 0, "page": page, "per_page": per_page})
+    query = Role.query.filter_by(tenant_id=tid)
     if name:
         query = query.filter(Role.name.contains(name))
     if status:
@@ -39,7 +43,7 @@ def list_roles():
 
 
 @roles_bp.route("", methods=["POST"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def create_role():
     data = request.get_json()
     if not data or not data.get("name") or not data.get("code"):
@@ -61,7 +65,7 @@ def create_role():
 
 
 @roles_bp.route("/<int:id>", methods=["PUT"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def update_role(id):
     role = Role.query.filter_by(id=id, tenant_id=_current_tenant_id()).first_or_404()
     data = request.get_json()
@@ -76,7 +80,7 @@ def update_role(id):
 
 
 @roles_bp.route("/<int:id>", methods=["DELETE"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def delete_role(id):
     role = Role.query.filter_by(id=id, tenant_id=_current_tenant_id()).first_or_404()
     if TenantMembership.query.filter_by(role_id=id, tenant_id=_current_tenant_id()).count() > 0:
@@ -87,7 +91,7 @@ def delete_role(id):
 
 
 @roles_bp.route("/<int:id>/permissions", methods=["PUT"])
-@role_required("admin", "tenant_admin")
+@role_required("system_admin", "tenant_admin")
 def assign_permissions(id):
     role = Role.query.filter_by(id=id, tenant_id=_current_tenant_id()).first_or_404()
     data = request.get_json()

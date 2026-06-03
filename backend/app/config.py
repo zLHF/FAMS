@@ -25,6 +25,24 @@ class Config:
     # Pagination limit
     MAX_PER_PAGE = 100
 
+    # --- 算力网络平台 SSO 配置 ---
+    PLATFORM_APP_ID = os.environ.get("PLATFORM_APP_ID", "")
+    PLATFORM_APP_SECRET = os.environ.get("PLATFORM_APP_SECRET", "")
+    PLATFORM_BASE_URL = os.environ.get("PLATFORM_BASE_URL", "")
+    PLATFORM_APP_CODE = os.environ.get("PLATFORM_APP_CODE", "")
+
+    # 心跳配置
+    HEARTBEAT_ENABLED = os.environ.get("HEARTBEAT_ENABLED", "false").lower() == "true"
+    HEARTBEAT_INTERVAL = int(os.environ.get("HEARTBEAT_INTERVAL", "300"))  # 秒
+
+    # SSO 开关
+    SSO_ENABLED = os.environ.get("SSO_ENABLED", "false").lower() == "true"
+
+    @classmethod
+    def platform_url(cls, path):
+        """拼接平台接口完整 URL。"""
+        return f"{cls.PLATFORM_BASE_URL}{path}"
+
     @classmethod
     def validate_production(cls):
         """Validate config for production. Raises RuntimeError if unsafe."""

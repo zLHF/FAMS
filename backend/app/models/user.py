@@ -12,3 +12,8 @@ class User(db.Model):
     department = db.Column(db.String(64))
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"))
     status = db.Column(db.String(16), default="active")
+
+    # SSO 相关字段
+    plt_account = db.Column(db.String(128), unique=True, nullable=True, index=True)
+    plt_user_cn = db.Column(db.String(128), nullable=True)
+    sso_user = db.Column(db.Boolean, default=False, nullable=False)

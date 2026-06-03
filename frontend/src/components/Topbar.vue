@@ -6,10 +6,11 @@
     </div>
     <div class="right-tools">
       <el-select
-        v-if="auth.tenants.length"
+        v-if="auth.tenants?.length"
         :model-value="auth.currentTenant?.id"
         size="small"
         class="tenant-select"
+        placeholder="选择租户"
         @change="handleTenantChange"
       >
         <el-option v-for="tenant in auth.tenants" :key="tenant.id" :label="tenant.name" :value="tenant.id" />

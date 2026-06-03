@@ -22,7 +22,7 @@ const auth = useAuthStore()
 const sidebarVisible = ref(window.innerWidth > 900)
 
 const titleMap = {
-  '/': '工作台', '/users': '用户管理', '/roles': '角色管理', '/permissions': '权限管理',
+  '/': '工作台', '/users': '用户管理', '/tenants': '租户管理', '/roles': '角色管理', '/permissions': '权限管理',
   '/asset-params': '资产参数设置', '/assets': '固定资产台账', '/asset-distribute': '资产派发',
   '/asset-borrow': '资产借用', '/asset-return': '借用归还', '/asset-revert': '领用退库',
   '/asset-owner-change': '变更领用人', '/logs': '操作日志',
