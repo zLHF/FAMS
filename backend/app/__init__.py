@@ -8,7 +8,7 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    CORS(app, supports_credentials=True)
+    CORS(app, origins=Config.CORS_ORIGINS.split(","), supports_credentials=True)
     db.init_app(app)
     migrate.init_app(app, db)
     bcrypt.init_app(app)

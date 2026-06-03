@@ -15,6 +15,11 @@ def login_required(f):
         payload = decode_token(token)
         if not payload:
             return jsonify({"error": "登录已过期"}), 401
+        # Check token revocation
+        from ..utils.token_blocklist import is_token_revoked
+        jti = payload.get("jti")
+        if jti and is_token_revoked(jti):
+            return jsonify({"error": "登录已过期"}), 401
         user = db.session.get(User, payload["user_id"])
         if not user or user.status == "disabled":
             return jsonify({"error": "用户不可用"}), 401
@@ -35,6 +40,11 @@ def role_required(*roles):
             token = auth_header[7:]
             payload = decode_token(token)
             if not payload:
+                return jsonify({"error": "登录已过期"}), 401
+            # Check token revocation
+            from ..utils.token_blocklist import is_token_revoked
+            jti = payload.get("jti")
+            if jti and is_token_revoked(jti):
                 return jsonify({"error": "登录已过期"}), 401
             user = db.session.get(User, payload["user_id"])
             if not user or user.status == "disabled":

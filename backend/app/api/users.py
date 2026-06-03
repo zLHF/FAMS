@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from ..extensions import db, bcrypt
 from ..models.user import User
 from ..models.operation_log import OperationLog
-from ..utils.decorators import login_required
+from ..utils.decorators import login_required, role_required
 
 users_bp = Blueprint("users", __name__, url_prefix="/api/users")
 
@@ -36,7 +36,7 @@ def _log(user_id, action, target_type, target_id, detail):
 @login_required
 def list_users():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = min(request.args.get("per_page", 10, type=int), 100)
     name = request.args.get("name", "")
     role_id = request.args.get("role_id", type=int)
     status = request.args.get("status", "")
@@ -61,17 +61,20 @@ def list_users():
 
 
 @users_bp.route("", methods=["POST"])
-@login_required
+@role_required("admin")
 def create_user():
     data = request.get_json()
     if not data or not data.get("username") or not data.get("name") or not data.get("role_id"):
         return jsonify({"error": "缺少必填字段"}), 400
     if User.query.filter_by(username=data["username"]).first():
         return jsonify({"error": "用户账号已存在"}), 400
+    password = data.get("password")
+    if not password or len(password) < 6:
+        return jsonify({"error": "密码长度不能少于6位"}), 400
 
     user = User(
         username=data["username"],
-        password_hash=bcrypt.generate_password_hash(data.get("password", "123456")).decode("utf-8"),
+        password_hash=bcrypt.generate_password_hash(password).decode("utf-8"),
         name=data["name"],
         phone=data.get("phone"),
         department=data.get("department"),
@@ -85,7 +88,7 @@ def create_user():
 
 
 @users_bp.route("/<int:id>", methods=["PUT"])
-@login_required
+@role_required("admin")
 def update_user(id):
     user = User.query.filter_by(id=id).first_or_404()
     data = request.get_json()
@@ -100,6 +103,8 @@ def update_user(id):
     if data.get("status"):
         user.status = data["status"]
     if data.get("password"):
+        if len(data["password"]) < 6:
+            return jsonify({"error": "密码长度不能少于6位"}), 400
         user.password_hash = bcrypt.generate_password_hash(data["password"]).decode("utf-8")
     _log(request.current_user.id, "update", "user", user.id, f"修改用户 {user.username}")
     db.session.commit()
@@ -107,7 +112,7 @@ def update_user(id):
 
 
 @users_bp.route("/<int:id>", methods=["DELETE"])
-@login_required
+@role_required("admin")
 def delete_user(id):
     user = User.query.filter_by(id=id).first_or_404()
     if user.username == "admin":

@@ -10,7 +10,7 @@ logs_bp = Blueprint("logs", __name__, url_prefix="/api/operation-logs")
 @login_required
 def list_logs():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
     action = request.args.get("action", "")
 
     query = OperationLog.query

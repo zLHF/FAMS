@@ -3,7 +3,7 @@ from ..extensions import db
 from ..models.asset_param import AssetParam
 from ..models.asset import Asset
 from ..models.operation_log import OperationLog
-from ..utils.decorators import login_required
+from ..utils.decorators import login_required, role_required
 
 params_bp = Blueprint("asset_params", __name__, url_prefix="/api/asset-params")
 
@@ -18,7 +18,7 @@ def _log(user_id, action, target_type, target_id, detail):
 @login_required
 def list_params():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
     type_ = request.args.get("type", "")
     name = request.args.get("name", "")
 
@@ -43,7 +43,7 @@ def list_params():
 
 
 @params_bp.route("", methods=["POST"])
-@login_required
+@role_required("admin")
 def create_param():
     data = request.get_json()
     if not data or not data.get("type") or not data.get("name"):
@@ -64,7 +64,7 @@ def create_param():
 
 
 @params_bp.route("/<int:id>", methods=["PUT"])
-@login_required
+@role_required("admin")
 def update_param(id):
     p = AssetParam.query.filter_by(id=id).first_or_404()
     data = request.get_json()
@@ -82,7 +82,7 @@ def update_param(id):
 
 
 @params_bp.route("/<int:id>", methods=["DELETE"])
-@login_required
+@role_required("admin")
 def delete_param(id):
     p = AssetParam.query.filter_by(id=id).first_or_404()
     ref = Asset.query.filter(

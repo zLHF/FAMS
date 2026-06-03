@@ -33,7 +33,7 @@
             登录系统
           </el-button>
         </el-form>
-        <p style="color:#7b8794;font-size:13px;margin-top:16px;">演示账号：admin / 123456</p>
+        <p v-if="isDev" style="color:#7b8794;font-size:13px;margin-top:16px;">开发模式 — 默认账号见 README</p>
       </div>
     </div>
   </div>
@@ -49,7 +49,8 @@ import { getStats } from '../api/dashboard'
 const auth = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
-const form = ref({ username: 'admin', password: '123456' })
+const isDev = import.meta.env.DEV
+const form = ref({ username: '', password: '' })
 const publicStats = ref({})
 
 async function handleLogin() {

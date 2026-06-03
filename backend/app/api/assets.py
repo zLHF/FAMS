@@ -5,7 +5,7 @@ from ..models.asset import Asset
 from ..models.flow_record import FlowRecord
 from ..models.operation_log import OperationLog
 from ..models.user import User
-from ..utils.decorators import login_required
+from ..utils.decorators import login_required, role_required
 
 assets_bp = Blueprint("assets", __name__, url_prefix="/api/assets")
 
@@ -45,7 +45,7 @@ def _log(user_id, action, target_type, target_id, detail):
 @login_required
 def list_assets():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = min(request.args.get("per_page", 10, type=int), 100)
     code = request.args.get("code", "")
     name = request.args.get("name", "")
     category = request.args.get("category", "")
@@ -80,7 +80,7 @@ def get_asset(id):
 
 
 @assets_bp.route("", methods=["POST"])
-@login_required
+@role_required("admin")
 def create_asset():
     data = request.get_json()
     if not data or not data.get("code") or not data.get("name"):
@@ -97,7 +97,7 @@ def create_asset():
         unit=data.get("unit") or None,
         purchase_date=data.get("purchase_date") or None,
         location=data.get("location") or None,
-        status=data.get("status", "idle"),
+        status=data.get("status", "idle") if data.get("status") in VALID_STATUSES else "idle",
         notes=data.get("notes") or None,
     )
     db.session.add(a)
@@ -107,7 +107,7 @@ def create_asset():
 
 
 @assets_bp.route("/<int:id>", methods=["PUT"])
-@login_required
+@role_required("admin")
 def update_asset(id):
     a = Asset.query.filter_by(id=id).first_or_404()
     data = request.get_json()
@@ -125,6 +125,7 @@ def update_asset(id):
 # ========== 流转操作 ==========
 
 STATUS_LABELS = {"idle": "闲置", "distributed": "已派发", "borrowing": "借用中", "returned": "已退库"}
+VALID_STATUSES = set(STATUS_LABELS.keys())
 
 
 def _record(asset, flow_type, operator_id, detail):

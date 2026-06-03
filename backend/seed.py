@@ -1,4 +1,6 @@
-"""初始化种子数据"""
+"""初始化种子数据 — 仅用于开发环境，请勿在生产环境运行"""
+import os
+import sys
 from app import create_app
 from app.extensions import db, bcrypt
 from app.models.role import Role
@@ -9,6 +11,9 @@ from app.models.asset import Asset
 
 
 def seed():
+    if os.environ.get("FLASK_ENV") == "production":
+        print("ERROR: seed.py 不能在生产环境运行")
+        sys.exit(1)
     app = create_app()
     with app.app_context():
         db.drop_all()
