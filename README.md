@@ -96,7 +96,7 @@ npm run dev
 | `SECRET_KEY` | 生产必填 | Flask 会话密钥 | 开发用默认值 |
 | `JWT_SECRET` | 生产必填 | JWT 签名密钥，至少 32 字符 | 开发用默认值 |
 | `DATABASE_URL` | 否 | 数据库连接串 | SQLite |
-| `CORS_ORIGINS` | 否 | 允许的前端源，逗号分隔 | `http://localhost:5173` |
+| `CORS_ORIGINS` | 否 | 允许的前端源，逗号分隔 | `http://localhost:5173,http://localhost:5001` |
 | `JWT_EXPIRATION_HOURS` | 否 | Token 有效时长 | 24 |
 | `LOGIN_MAX_ATTEMPTS` | 否 | 登录失败锁定阈值 | 5 |
 | `LOGIN_LOCKOUT_MINUTES` | 否 | 锁定时长（分钟） | 15 |
@@ -112,6 +112,7 @@ npm run dev
 | `SSO_ENABLED` | SSO 功能开关，`true` / `false`（默认 `false`） |
 | `HEARTBEAT_ENABLED` | 心跳上报开关，`true` / `false`（默认 `false`） |
 | `HEARTBEAT_INTERVAL` | 心跳间隔秒数（默认 `300`，即 5 分钟） |
+| `HEARTBEAT_LOCK_FILE` | 心跳多进程文件锁路径，默认 `/tmp/fams_heartbeat.lock`，用于避免 Gunicorn 多 worker 重复上报 |
 
 生产环境配置示例：
 
@@ -205,20 +206,38 @@ FAMS 对接算力网络分布式管理平台实现了 4 个接口：
 
 ```bash
 # 1. 构建前端
-cd frontend && npm run build
+cd frontend
+npm ci
+npm run build
 
-# 2. 安装生产依赖
-cd backend
+# 2. 安装后端依赖
+cd ../backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 pip install gunicorn
 
 # 3. 配置环境变量（见上方「环境变量」章节）
 export FLASK_ENV=production
 export SECRET_KEY=...
 export JWT_SECRET=...
+export DATABASE_URL=sqlite:////path/to/FAMS/backend/fams.db
+export CORS_ORIGINS=http://your-domain.example
 
-# 4. 启动后端（4 worker 进程）
+# SSO / 心跳按需开启
+export SSO_ENABLED=false
+export HEARTBEAT_ENABLED=false
+
+# 4. 初始化或升级生产数据库
+flask db upgrade
+
+# 5. 启动后端（4 worker 进程）
 gunicorn -w 4 -b 127.0.0.1:5001 "app:create_app()"
 ```
+
+> 生产环境不要执行 `python seed.py`，除非明确需要导入演示账号。
+> `app:create_app()` 会在启动时校验生产密钥；`SECRET_KEY` 和 `JWT_SECRET` 必须通过环境变量设置，且 `JWT_SECRET` 长度至少 32 字符。
+> 如果开启 `HEARTBEAT_ENABLED=true`，后端会使用 `HEARTBEAT_LOCK_FILE` 文件锁避免 Gunicorn 多 worker 重复上报。多台机器部署时，建议改为独立的单实例定时任务或使用共享锁。
 
 ### Nginx 配置参考
 
@@ -241,6 +260,8 @@ server {
         proxy_pass http://127.0.0.1:5001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # Open API 反向代理（供算力网络平台调用）
@@ -248,6 +269,8 @@ server {
         proxy_pass http://127.0.0.1:5001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
@@ -256,8 +279,10 @@ server {
 
 ### 方式二：Docker（可选）
 
+下面仅是后端镜像示例，不包含前端静态文件构建、Nginx、数据库持久化和迁移编排。完整容器化部署时仍需：构建 `frontend/dist`、挂载或配置生产数据库、注入生产环境变量，并在启动前执行 `flask db upgrade`。
+
 ```dockerfile
-# Dockerfile 示例（后端）
+# Dockerfile 示例（后端；假设从仓库根目录构建）
 FROM python:3.12-slim
 WORKDIR /app
 COPY backend/ .

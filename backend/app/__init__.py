@@ -8,7 +8,12 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    CORS(app, origins=Config.CORS_ORIGINS.split(","), supports_credentials=True)
+    if hasattr(config_class, "validate_production"):
+        errors = config_class.validate_production()
+        if errors:
+            raise RuntimeError("Production config validation failed: " + "; ".join(errors))
+
+    CORS(app, origins=app.config["CORS_ORIGINS"].split(","), supports_credentials=True)
     db.init_app(app)
     migrate.init_app(app, db)
     bcrypt.init_app(app)
