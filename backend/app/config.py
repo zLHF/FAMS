@@ -34,6 +34,7 @@ class Config:
     # 心跳配置
     HEARTBEAT_ENABLED = os.environ.get("HEARTBEAT_ENABLED", "false").lower() == "true"
     HEARTBEAT_INTERVAL = int(os.environ.get("HEARTBEAT_INTERVAL", "300"))  # 秒
+    HEARTBEAT_LOCK_FILE = os.environ.get("HEARTBEAT_LOCK_FILE", "/tmp/fams_heartbeat.lock")
 
     # SSO 开关
     SSO_ENABLED = os.environ.get("SSO_ENABLED", "false").lower() == "true"
