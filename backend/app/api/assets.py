@@ -6,8 +6,13 @@ from ..models.flow_record import FlowRecord
 from ..models.operation_log import OperationLog
 from ..models.user import User
 from ..utils.decorators import login_required, role_required
+from ..utils.tenant import is_tenant_member
 
 assets_bp = Blueprint("assets", __name__, url_prefix="/api/assets")
+
+
+def _current_tenant_id():
+    return request.current_tenant.id
 
 
 def _asset_dict(a, detail=False):
@@ -37,8 +42,19 @@ def _asset_dict(a, detail=False):
 
 def _log(user_id, action, target_type, target_id, detail):
     db.session.add(
-        OperationLog(user_id=user_id, action=action, target_type=target_type, target_id=target_id, detail=detail)
+        OperationLog(tenant_id=_current_tenant_id(), user_id=user_id, action=action, target_type=target_type, target_id=target_id, detail=detail)
     )
+
+
+def _get_asset_or_404(id):
+    return Asset.query.filter_by(id=id, tenant_id=_current_tenant_id()).first_or_404()
+
+
+def _get_member_user(user_id):
+    user = db.session.get(User, user_id)
+    if not user or not is_tenant_member(user.id, _current_tenant_id()):
+        return None
+    return user
 
 
 @assets_bp.route("", methods=["GET"])
@@ -51,7 +67,7 @@ def list_assets():
     category = request.args.get("category", "")
     status = request.args.get("status", "")
 
-    query = Asset.query
+    query = Asset.query.filter_by(tenant_id=_current_tenant_id())
     if code:
         query = query.filter(Asset.code.contains(code))
     if name:
@@ -75,19 +91,20 @@ def list_assets():
 @assets_bp.route("/<int:id>", methods=["GET"])
 @login_required
 def get_asset(id):
-    asset = Asset.query.filter_by(id=id).first_or_404()
+    asset = _get_asset_or_404(id)
     return jsonify(_asset_dict(asset, detail=True))
 
 
 @assets_bp.route("", methods=["POST"])
-@role_required("admin")
+@role_required("admin", "tenant_admin")
 def create_asset():
     data = request.get_json()
     if not data or not data.get("code") or not data.get("name"):
         return jsonify({"error": "资产编码和名称为必填"}), 400
-    if Asset.query.filter_by(code=data["code"]).first():
+    if Asset.query.filter_by(tenant_id=_current_tenant_id(), code=data["code"]).first():
         return jsonify({"error": "资产编码已存在"}), 400
     a = Asset(
+        tenant_id=_current_tenant_id(),
         code=data["code"],
         name=data["name"],
         category=data.get("category") or None,
@@ -101,15 +118,16 @@ def create_asset():
         notes=data.get("notes") or None,
     )
     db.session.add(a)
+    db.session.flush()
     _log(request.current_user.id, "create", "asset", a.id, f"新增资产 {a.code}")
     db.session.commit()
     return jsonify(_asset_dict(a)), 201
 
 
 @assets_bp.route("/<int:id>", methods=["PUT"])
-@role_required("admin")
+@role_required("admin", "tenant_admin")
 def update_asset(id):
-    a = Asset.query.filter_by(id=id).first_or_404()
+    a = _get_asset_or_404(id)
     data = request.get_json()
     for field in [
         "name", "category", "brand", "model", "serial_number",
@@ -129,22 +147,22 @@ VALID_STATUSES = set(STATUS_LABELS.keys())
 
 
 def _record(asset, flow_type, operator_id, detail):
-    db.session.add(FlowRecord(asset_id=asset.id, flow_type=flow_type, operator_id=operator_id, detail=detail))
+    db.session.add(FlowRecord(tenant_id=_current_tenant_id(), asset_id=asset.id, flow_type=flow_type, operator_id=operator_id, detail=detail))
     db.session.add(
-        OperationLog(user_id=operator_id, action=flow_type, target_type="asset", target_id=asset.id, detail=str(detail))
+        OperationLog(tenant_id=_current_tenant_id(), user_id=operator_id, action=flow_type, target_type="asset", target_id=asset.id, detail=str(detail))
     )
 
 
 @assets_bp.route("/<int:id>/distribute", methods=["POST"])
 @login_required
 def distribute(id):
-    a = Asset.query.filter_by(id=id).first_or_404()
+    a = _get_asset_or_404(id)
     if a.status not in ("idle", "returned"):
         return jsonify({"error": f"当前状态「{STATUS_LABELS.get(a.status, a.status)}」不允许派发"}), 400
     data = request.get_json()
     if not data.get("owner_id"):
         return jsonify({"error": "请选择领用人"}), 400
-    owner = db.session.get(User, data["owner_id"])
+    owner = _get_member_user(data["owner_id"])
     if not owner:
         return jsonify({"error": "领用人不存在"}), 400
     a.status = "distributed"
@@ -163,13 +181,13 @@ def distribute(id):
 @assets_bp.route("/<int:id>/borrow", methods=["POST"])
 @login_required
 def borrow(id):
-    a = Asset.query.filter_by(id=id).first_or_404()
+    a = _get_asset_or_404(id)
     if a.status not in ("idle", "returned"):
         return jsonify({"error": f"当前状态「{STATUS_LABELS.get(a.status, a.status)}」不允许借用"}), 400
     data = request.get_json()
     if not data.get("borrower_id") or not data.get("expected_return_date"):
         return jsonify({"error": "借用人和预计归还日期为必填"}), 400
-    borrower = db.session.get(User, data["borrower_id"])
+    borrower = _get_member_user(data["borrower_id"])
     if not borrower:
         return jsonify({"error": "借用人不存在"}), 400
     a.status = "borrowing"
@@ -186,7 +204,7 @@ def borrow(id):
 @assets_bp.route("/<int:id>/return", methods=["POST"])
 @login_required
 def return_(id):
-    a = Asset.query.filter_by(id=id).first_or_404()
+    a = _get_asset_or_404(id)
     if a.status != "borrowing":
         return jsonify({"error": "只有借用中的资产可以归还"}), 400
     data = request.get_json()
@@ -205,7 +223,7 @@ def return_(id):
 @assets_bp.route("/<int:id>/revert", methods=["POST"])
 @login_required
 def revert(id):
-    a = Asset.query.filter_by(id=id).first_or_404()
+    a = _get_asset_or_404(id)
     if a.status != "distributed":
         return jsonify({"error": "只有已派发的资产可以退库"}), 400
     data = request.get_json()
@@ -225,14 +243,14 @@ def revert(id):
 @assets_bp.route("/<int:id>/owner-change", methods=["POST"])
 @login_required
 def owner_change(id):
-    a = Asset.query.filter_by(id=id).first_or_404()
+    a = _get_asset_or_404(id)
     if a.status != "distributed":
         return jsonify({"error": "只有已派发的资产可以变更领用人"}), 400
     data = request.get_json()
     if not data.get("new_owner_id"):
         return jsonify({"error": "请选择新领用人"}), 400
     old_owner = a.owner.name if a.owner else ""
-    new_owner = db.session.get(User, data["new_owner_id"])
+    new_owner = _get_member_user(data["new_owner_id"])
     if not new_owner:
         return jsonify({"error": "新领用人不存在"}), 400
     if data.get("location"):
@@ -250,8 +268,8 @@ def owner_change(id):
 @assets_bp.route("/<int:id>/records", methods=["GET"])
 @login_required
 def flow_records(id):
-    Asset.query.filter_by(id=id).first_or_404()
-    records = FlowRecord.query.filter_by(asset_id=id).order_by(FlowRecord.id.desc()).all()
+    _get_asset_or_404(id)
+    records = FlowRecord.query.filter_by(asset_id=id, tenant_id=_current_tenant_id()).order_by(FlowRecord.id.desc()).all()
     return jsonify({
         "items": [{
             "id": r.id, "flow_type": r.flow_type,

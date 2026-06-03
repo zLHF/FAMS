@@ -11,12 +11,19 @@ class Role(db.Model):
     __tablename__ = "roles"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True, nullable=False)
-    code = db.Column(db.String(64), unique=True, nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True)
+    name = db.Column(db.String(64), nullable=False)
+    code = db.Column(db.String(64), nullable=False)
     description = db.Column(db.String(256))
     status = db.Column(db.String(16), default="active")
 
+    tenant = db.relationship("Tenant", backref="roles")
     users = db.relationship("User", backref="role", lazy="dynamic")
     permissions = db.relationship(
         "Permission", secondary="role_permissions", backref="roles", lazy="dynamic"
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint("tenant_id", "name", name="uq_role_tenant_name"),
+        db.UniqueConstraint("tenant_id", "code", name="uq_role_tenant_code"),
     )

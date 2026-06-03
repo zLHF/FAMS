@@ -22,6 +22,8 @@ http.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('fams_token')
       localStorage.removeItem('fams_user')
+      localStorage.removeItem('fams_tenant')
+      localStorage.removeItem('fams_tenants')
       router.push('/login')
     }
     ElMessage.error(msg)
